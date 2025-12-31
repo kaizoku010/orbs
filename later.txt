@@ -1,0 +1,29 @@
+import React from 'react'
+import "./homepage.css"
+import Logo from "../../media/logo.png"
+import Title from "../../media/try.svg"
+
+function HomePage() {
+  return (
+    <div className='hm-page'>
+
+
+{/* keep thois  */}
+<header className='hmp-header'>
+{/* <img className='hmp-logo' src={Logo}/> */}
+</header>
+<div className='hmp-hero'>
+<img className='hmp-logo' src={Logo}/>
+
+
+ <img className='hmp-svg-title' src={Title}/>
+  
+</div>
+
+
+    </div>
+
+  )
+}
+
+export default HomePage
