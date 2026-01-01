@@ -4,7 +4,7 @@
 /* KIZUNA Design Tokens */
 @theme {
   /* Typography */
-  --font-sans: "Space Grotesk", "Figma Sans", "SF Pro Display", ui-sans-serif, system-ui, sans-serif,
+  --font-sans:"Rajdhani", "Space Grotesk", "Figma Sans", "SF Pro Display", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
   /* Colors - KIZUNA Brand */
