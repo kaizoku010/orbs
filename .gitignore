@@ -2,6 +2,7 @@
 .env
 /node_modules/
 .history/
+history/
 
 # React Router
 /.react-router/
