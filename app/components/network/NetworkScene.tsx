@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Suspense, useRef } from 'react';
+import React, { useState, useMemo, Suspense, useRef, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Stars, ContactShadows } from '@react-three/drei';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
@@ -7,6 +7,8 @@ import { Plus, Minus, Maximize, ArrowLeft, MessageCircle, PlusCircle, History, X
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserOrb } from './UserOrb';
 import { ConnectionLine } from './ConnectionLine';
+import RatingModal from '../ui/RatingModal';
+import { logActivity } from '~/mocks/services/activityService';
 import { NETWORK_CATEGORIES } from '~/constants/categories';
 
 interface NetworkSceneProps {
@@ -167,7 +169,11 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
                     id: req.id,
                     start: startNode.position,
                     end: endNode.position,
-                    type: (req.status === 'accepted' || req.status === 'in-progress' || req.status === 'connected') ? 'active' : 'past',
+                    type: req.status === 'fulfilled' 
+                        ? 'completed'
+                        : (req.status === 'accepted' || req.status === 'in-progress' || req.status === 'enroute' || req.status === 'connected') 
+                        ? 'active' 
+                        : 'past',
                     isMeConnection
                 });
             }
@@ -179,6 +185,8 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
     const [isResetting, setIsResetting] = useState(false);
 
     const [activeModal, setActiveModal] = useState<'chat' | 'request' | 'history' | 'browse' | null>(null);
+    const [ratingModalOpen, setRatingModalOpen] = useState(false);
+    const [pendingRequestForRating, setPendingRequestForRating] = useState<any>(null);
     const [requestStep, setRequestStep] = useState(1);
     const [requestData, setRequestData] = useState({
         categoryId: '',
@@ -201,6 +209,33 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
     const [chatTargetUser, setChatTargetUser] = useState<any>(null);
 
     const categories = NETWORK_CATEGORIES;
+
+    // Check for pending offer from request detail page
+    useEffect(() => {
+        const pendingOfferData = sessionStorage.getItem('pendingOffer');
+        if (pendingOfferData) {
+            try {
+                const offerData = JSON.parse(pendingOfferData);
+                // Find the asker user object
+                const asker = users.find(u => u.id === offerData.askerId);
+                if (asker) {
+                    // Setup chat with auto message
+                    setChatTargetUser(asker);
+                    const autoMsg = {
+                        sender: 'me',
+                        text: offerData.autoMessage,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    };
+                    setChatMessages([autoMsg]);
+                    setActiveModal('chat');
+                }
+                // Clear the pending offer
+                sessionStorage.removeItem('pendingOffer');
+            } catch (err) {
+                console.error('Failed to parse pending offer:', err);
+            }
+        }
+    }, [users]);
 
     const handleZoomIn = () => setZoomFactor(prev => Math.max(0.2, prev - 0.2));
     const handleZoomOut = () => setZoomFactor(prev => Math.min(2, prev + 0.2));
@@ -234,6 +269,173 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
         };
         setChatMessages([autoMsg]);
         setActiveModal('chat');
+    };
+
+    const handleConfirmRequest = async () => {
+        if (!chatTargetUser) return;
+
+        // Find the request that was just created from the pending offer
+        const pendingOfferData = sessionStorage.getItem('pendingOffer');
+        if (!pendingOfferData) return;
+
+        try {
+            const offerData = JSON.parse(pendingOfferData);
+            
+            // Find matching request
+            const request = requests.find(r => r.id === offerData.requestId);
+            if (!request) return;
+
+            // CHECK COOLDOWN
+            if (currentUserId) {
+                const now = Date.now();
+                const currentUser = users.find(u => u.id === currentUserId);
+                if (currentUser?.cooldownExpiry) {
+                    const expiry = new Date(currentUser.cooldownExpiry).getTime();
+                    if (expiry > now) {
+                        const remaining = expiry - now;
+                        const minutes = Math.floor(remaining / 60000);
+                        const seconds = Math.floor((remaining % 60000) / 1000);
+                        console.log(`Still on cooldown: ${minutes}:${String(seconds).padStart(2, '0')} remaining`);
+                        return;
+                    }
+                }
+            }
+
+            // Update request with enroute status
+            const updatedRequest = {
+                ...request,
+                status: 'enroute' as const,
+                supporterId: currentUserId,
+                startedAt: new Date().toISOString(),
+                estimatedDuration: 30 // 30 minutes default
+            };
+
+            // Update in mock store (will be replaced with actual API call)
+            const requestIndex = requests.findIndex(r => r.id === request.id);
+            if (requestIndex !== -1) {
+                requests[requestIndex] = updatedRequest;
+            }
+
+            // SET COOLDOWN (30 minutes)
+            if (currentUserId) {
+                const currentUser = users.find(u => u.id === currentUserId);
+                if (currentUser) {
+                    const now = new Date();
+                    const expiry = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes
+                    currentUser.lastRequestConfirmedAt = now.toISOString();
+                    currentUser.cooldownExpiry = expiry.toISOString();
+                }
+            }
+
+            // Add system message to chat
+            const systemMsg = {
+                sender: 'system',
+                text: '✓ Request confirmed and started! Timer is now running. You\'re on a 30-minute cooldown.',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setChatMessages([...chatMessages, systemMsg]);
+
+            // Clear pending offer
+            sessionStorage.removeItem('pendingOffer');
+
+            // Show success toast (if available)
+            console.log('Request confirmed! Status: enroute');
+
+            // Log activity event
+            logActivity({
+                userId: currentUserId || '',
+                type: 'confirmation' as const,
+                targetUserId: chatTargetUser?.id || '',
+                title: `confirmed request`,
+                description: `${currentUser?.name || 'Someone'} confirmed to help with "${request.title}"`,
+                timestamp: new Date().toISOString()
+            }).catch(err => console.log('Activity logged:', err));
+        } catch (err) {
+            console.error('Failed to confirm request:', err);
+        }
+    };
+
+    const handleCompleteRequest = (request: any) => {
+        if (!currentUserId) return;
+
+        // Update request status to fulfilled
+        const requestIndex = requests.findIndex(r => r.id === request.id);
+        if (requestIndex !== -1) {
+            requests[requestIndex] = {
+                ...requests[requestIndex],
+                status: 'fulfilled' as const,
+                completedAt: new Date().toISOString()
+            };
+        }
+
+        // Open rating modal for this request
+        setPendingRequestForRating(request);
+        setRatingModalOpen(true);
+
+        // Log activity event
+        logActivity({
+            userId: currentUserId || '',
+            type: 'completion' as const,
+            targetUserId: request.askerId || '',
+            title: `completed delivery`,
+            description: `${users.find(u => u.id === currentUserId)?.name || 'Someone'} completed "${request.title}"`,
+            timestamp: new Date().toISOString()
+        }).catch(err => console.log('Activity logged:', err));
+
+        console.log(`Request ${request.id} completed - rating modal opened`);
+    };
+
+    const handleSubmitRating = (rating: number, comment: string) => {
+        if (!currentUserId || !pendingRequestForRating) return;
+
+        const request = pendingRequestForRating;
+        
+        // Update request with rating
+        const requestIndex = requests.findIndex(r => r.id === request.id);
+        if (requestIndex !== -1) {
+            requests[requestIndex] = {
+                ...requests[requestIndex],
+                ratings: {
+                    ...requests[requestIndex].ratings,
+                    [currentUserId]: { rating, comment, ratedAt: new Date().toISOString() }
+                }
+            };
+        }
+
+        // Find the supporter and update their rating
+        const supporter = request.supporterId ? users.find(u => u.id === request.supporterId) : null;
+        if (supporter) {
+            // Update supporter's ratings
+            const currentRatings = supporter.ratingsBreakdown || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+            currentRatings[rating as keyof typeof currentRatings] = (currentRatings[rating as keyof typeof currentRatings] || 0) + 1;
+            supporter.ratingsBreakdown = currentRatings;
+            
+            // Calculate new average
+            const totalRatings = Object.values(currentRatings).reduce((a: number, b: number) => a + b, 0);
+            const totalScore = Object.entries(currentRatings).reduce((sum, [stars, count]) => sum + (parseInt(stars) * (count as number)), 0);
+            supporter.averageRating = totalScore / totalRatings;
+            supporter.totalRatingsReceived = totalRatings;
+        }
+
+        // Log activity events
+        logActivity({
+            userId: currentUserId || '',
+            type: 'rating_received' as const,
+            targetUserId: supporter?.id || '',
+            title: `received ${rating}-star rating`,
+            description: `${users.find(u => u.id === currentUserId)?.name || 'Someone'} gave ${rating} stars for "${request.title}"`,
+            rating: rating,
+            timestamp: new Date().toISOString()
+        }).catch(err => console.log('Activity logged:', err));
+
+        console.log(`Rating submitted: ${rating} stars`);
+        
+        // Could check for badge unlocks here
+        // For now, just close the modal
+        setRatingModalOpen(false);
+        setPendingRequestForRating(null);
+        
+        return Promise.resolve();
     };
 
     return (
@@ -276,12 +478,14 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
                                 onRespondToRequest={handleInternalRespond}
                                 isMe={node.isMe}
                                 onClose={handleResetZoom}
+                                currentUserId={currentUserId}
                                 history={{
                                     deliveries: Math.floor(Math.random() * 10) + (node.user.totalConnections || 5),
                                     trust: (Math.random() * 5 + 95).toFixed(1) + "%",
                                     lastRating: 5,
                                     lastReview: node.isMe ? "This is you!" : "Highly reliable supporter."
                                 }}
+                                chatTargetUser={chatTargetUser}
                             />
                         ))}
                     </group>
@@ -641,14 +845,23 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
                                         </div>
 
                                         {/* Input Area */}
-                                        <div className="p-4 bg-white border-t border-slate-100 flex gap-2">
-                                            <input
-                                                type="text"
-                                                placeholder="Type your message..."
-                                                className="flex-1 bg-slate-50 border border-slate-100 rounded-[10px] px-4 py-3 text-xs outline-none focus:ring-1 focus:ring-kizuna-green/20"
-                                            />
-                                            <button className="bg-charcoal text-white p-3 rounded-[10px] hover:bg-black transition-all">
-                                                <ArrowUpRight size={18} />
+                                        <div className="p-4 bg-white border-t border-slate-100 space-y-3">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Type your message..."
+                                                    className="flex-1 bg-slate-50 border border-slate-100 rounded-[10px] px-4 py-3 text-xs outline-none focus:ring-1 focus:ring-kizuna-green/20"
+                                                />
+                                                <button className="bg-charcoal text-white p-3 rounded-[10px] hover:bg-black transition-all">
+                                                    <ArrowUpRight size={18} />
+                                                </button>
+                                            </div>
+                                            <button
+                                                onClick={handleConfirmRequest}
+                                                className="w-full bg-kizuna-green text-white py-3 rounded-[10px] font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Check size={16} />
+                                                Confirm & Start Request
                                             </button>
                                         </div>
                                     </div>
@@ -834,6 +1047,20 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
                             </div>
                         </motion.div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+            
+            {/* Rating Modal */}
+            <AnimatePresence>
+                {ratingModalOpen && pendingRequestForRating && (
+                    <RatingModal
+                        user={users.find(u => u.id === pendingRequestForRating.supporterId) || users[0]}
+                        onSubmit={handleSubmitRating}
+                        onClose={() => {
+                            setRatingModalOpen(false);
+                            setPendingRequestForRating(null);
+                        }}
+                    />
                 )}
             </AnimatePresence>
         </div>

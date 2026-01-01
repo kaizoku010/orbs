@@ -3,15 +3,23 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
+// Firebase configuration using environment variables
 const firebaseConfig = {
-    apiKey: "AIzaSyALa1-gA3Z4kZQ_sCJW1M1yzE8hZyTqFX8",
-    authDomain: "myduuka-3bfac.firebaseapp.com",
-    databaseURL: "https://myduuka-3bfac-default-rtdb.firebaseio.com",
-    projectId: "myduuka-3bfac",
-    storageBucket: "myduuka-3bfac.firebasestorage.app",
-    messagingSenderId: "604748418248",
-    appId: "1:604748418248:web:fb8d25eca7fa41e5d8a9fd"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
+
+// Validate that all required environment variables are present
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    throw new Error(
+        'Missing Firebase configuration. Please check your .env file and ensure all VITE_FIREBASE_* variables are set.'
+    );
+}
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);

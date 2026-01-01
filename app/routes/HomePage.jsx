@@ -2,17 +2,23 @@ import React, { useState, useEffect } from 'react'
 import "./homepage.css"
 import Logo from "../../media/logo.png"
 import Title from "../../media/try.svg"
-import { fetchAllUsers } from "../mocks/services"
+import { fetchAllUsers, fetchCurrentUser } from "../mocks/services"
 import { motion } from "framer-motion"
-import { Star, Shield, Award, MapPin, Share2, Globe } from "lucide-react"
-import { Link } from "react-router"
+import { Star, Shield, Award, MapPin, Share2, Globe, LogIn, UserPlus } from "lucide-react"
+import { Link, useNavigate } from "react-router"
 
 function HomePage() {
   const [stats, setStats] = useState({ users: 0, connections: 0 })
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     async function loadData() {
+      // Check if user is authenticated
+      const userRes = await fetchCurrentUser()
+      setIsAuthenticated(userRes.success && userRes.user !== null)
+
       const uRes = await fetchAllUsers()
       if (uRes.success) {
         setStats({
@@ -25,11 +31,34 @@ function HomePage() {
     loadData()
   }, [])
 
+  const handleNetworkClick = (e) => {
+    if (!isAuthenticated) {
+      e.preventDefault()
+      navigate('/auth/login')
+    }
+  }
+
   return (
     <div className='hm-page min-h-screen bg-washi-beige'>
       <header className='hmp-header p-6 fixed top-0 w-full z-50 flex justify-between items-center pointer-events-none'>
         <div className="pointer-events-auto">
           <img className='hmp-logo w-12 h-12' src={Logo} alt="Kizuna Logo" />
+        </div>
+        <div className="pointer-events-auto flex gap-3">
+          <Link
+            to="/auth/login"
+            className="px-6 py-2.5 bg-white/90 backdrop-blur-sm text-charcoal rounded-xl font-bold text-sm hover:bg-white transition-all shadow-lg border border-white/20 flex items-center gap-2"
+          >
+            <LogIn size={16} />
+            Login
+          </Link>
+          <Link
+            to="/auth/register"
+            className="px-6 py-2.5 bg-kizuna-green text-white rounded-xl font-bold text-sm hover:brightness-110 transition-all shadow-lg shadow-kizuna-green/20 flex items-center gap-2"
+          >
+            <UserPlus size={16} />
+            Sign Up
+          </Link>
         </div>
       </header>
 
@@ -40,6 +69,24 @@ function HomePage() {
           <p className="mt-6 text-charcoal-muted text-center max-w-lg">
             Where community becomes connection. Explore your local delivery network in 3D.
           </p>
+
+          {/* Auth CTAs */}
+          <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            <Link
+              to="/auth/register"
+              className="px-8 py-4 bg-kizuna-green text-white rounded-2xl font-bold text-lg hover:brightness-110 transition-all shadow-xl shadow-kizuna-green/20 flex items-center justify-center gap-2"
+            >
+              <UserPlus size={20} />
+              Get Started
+            </Link>
+            <Link
+              to="/auth/login"
+              className="px-8 py-4 bg-white text-charcoal border-2 border-charcoal/10 rounded-2xl font-bold text-lg hover:bg-charcoal hover:text-white transition-all shadow-lg flex items-center justify-center gap-2"
+            >
+              <LogIn size={20} />
+              Sign In
+            </Link>
+          </div>
         </div>
 
         {/* Connection Network CTA */}
@@ -65,6 +112,7 @@ function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   to="/network"
+                  onClick={handleNetworkClick}
                   className="px-8 py-4 bg-white text-black rounded-2xl font-bold text-lg hover:bg-kizuna-green hover:text-white transition-all transform active:scale-95 shadow-xl shadow-black/20 flex items-center gap-2"
                 >
                   <Share2 size={20} />

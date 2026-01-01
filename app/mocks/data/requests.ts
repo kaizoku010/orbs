@@ -1,6 +1,6 @@
 // Mock Requests Data - Single Source of Truth
 // A "Request" is when someone asks their community for help
-export type RequestStatus = 'open' | 'connected' | 'in-progress' | 'fulfilled' | 'cancelled';
+export type RequestStatus = 'open' | 'connected' | 'enroute' | 'in-progress' | 'fulfilled' | 'cancelled';
 
 export interface Request {
   id: string;
@@ -24,7 +24,11 @@ export interface Request {
   createdAt: string;
   scheduledFor: string | null;
   fulfilledAt: string | null;
-  isMeConnection?: boolean; // New visual flag
+  startedAt?: string;          // ISO timestamp when supporter confirmed
+  estimatedDuration?: number;  // Minutes (default: 30)
+  completedAt?: string;        // ISO timestamp when request was fulfilled
+  ratings?: Record<string, { rating: number; comment?: string; ratedAt: string }>;
+  isMeConnection?: boolean;    // Visual flag
 }
 
 export const requests: Request[] = [

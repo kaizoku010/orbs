@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NetworkScene } from "../components/network/NetworkScene";
+import { ActivityPane } from "../components/network/ActivityPane";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Shield, Award, X, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -23,7 +24,15 @@ export default function NetworkPage() {
         // Fetch current user once
         async function loadMe() {
             const meRes = await fetchCurrentUser();
-            if (meRes.success) setCurrentUser(meRes.user);
+
+            // Check if user is authenticated
+            if (!meRes.success || !meRes.user) {
+                // No user logged in, redirect to login
+                navigate('/auth/login');
+                return;
+            }
+
+            setCurrentUser(meRes.user);
             setLoading(false);
         }
         loadMe();
@@ -41,7 +50,7 @@ export default function NetworkPage() {
             unsubscribeUsers();
             unsubscribeRequests();
         };
-    }, []);
+    }, [navigate]);
 
     const handleUserClick = (user: any) => {
         setSelectedUser(user);
@@ -97,20 +106,26 @@ export default function NetworkPage() {
                     </div>
                 </div>
             ) : (
-                <div className="w-full h-full">
-                    <NetworkScene
-                        users={users}
-                        requests={requests}
-                        onUserClick={handleUserClick}
-                        selectedUserId={selectedUser?.id}
-                        currentUserId={currentUser?.id}
-                        onUserClose={() => setSelectedUser(null)}
-                        onRespondToRequest={handleRespondToRequest}
-                        onCancelRequest={handleCancelRequest}
-                        onPostRequest={handleCreateRequest}
-                    />
+                <div className="w-full h-full flex gap-4 p-4">
+                    {/* Left Activity Pane */}
+                    <div className="w-80 hidden lg:block">
+                        <ActivityPane />
+                    </div>
 
-
+                    {/* Main Network Scene */}
+                    <div className="flex-1">
+                        <NetworkScene
+                            users={users}
+                            requests={requests}
+                            onUserClick={handleUserClick}
+                            selectedUserId={selectedUser?.id}
+                            currentUserId={currentUser?.id}
+                            onUserClose={() => setSelectedUser(null)}
+                            onRespondToRequest={handleRespondToRequest}
+                            onCancelRequest={handleCancelRequest}
+                            onPostRequest={handleCreateRequest}
+                        />
+                    </div>
                 </div>
             )}
         </div>

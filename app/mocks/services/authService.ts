@@ -13,7 +13,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '~/lib/firebase';
 
 export interface LoginCredentials {
-  phone: string;
+  email: string;
   password: string;
 }
 
@@ -40,21 +40,36 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
 
   // Try Firestore first
   const usersRef = collection(db, "users");
-  const q = query(usersRef, where("phone", "==", credentials.phone));
+  const q = query(usersRef, where("email", "==", credentials.email));
   const querySnapshot = await getDocs(q);
 
   let user: User | undefined;
+  let storedPassword: string | undefined;
 
   if (!querySnapshot.empty) {
-    user = querySnapshot.docs[0].data() as User;
+    const userData = querySnapshot.docs[0].data();
+    user = userData as User;
+    storedPassword = userData.password;
   } else {
     // Fallback to mock users
     const mockUsers = getUsers();
-    user = mockUsers.find(u => u.phone === credentials.phone);
+    user = mockUsers.find(u => u.email === credentials.email);
+    // For mock users, accept any password for now (in production, would check hashed password)
   }
 
   if (!user) {
-    return { success: false, error: 'User not found' };
+    return { success: false, error: 'Invalid password' };
+  }
+
+  // In a real app, we'd verify hashed password here
+  // For now, just check if password was provided
+  if (!credentials.password) {
+    return { success: false, error: 'Password is required' };
+  }
+
+  // If user has a stored password (from Firestore), verify it
+  if (storedPassword && storedPassword !== credentials.password) {
+    return { success: false, error: 'Invalid password' };
   }
 
   setCurrentUser(user.id);
@@ -112,10 +127,40 @@ export async function loginWithEmail(email: string, password: string): Promise<A
 export async function register(data: RegisterData): Promise<AuthResponse> {
   await realisticDelay();
 
-  // Check if phone already exists
   const users = getUsers();
+  const usersRef = collection(db, "users");
+
+  // Check if phone already exists in local store
   if (users.find(u => u.phone === data.phone)) {
     return { success: false, error: 'Phone number already registered' };
+  }
+
+  // Check if phone already exists in Firestore
+  const phoneQuery = query(usersRef, where("phone", "==", data.phone));
+  const phoneSnapshot = await getDocs(phoneQuery);
+
+  if (!phoneSnapshot.empty) {
+    return { success: false, error: 'Phone number already registered' };
+  }
+
+  // Check if email already exists in local store
+  if (data.email && users.find(u => u.email === data.email)) {
+    return { success: false, error: 'Email already registered' };
+  }
+
+  // Check if email already exists in Firestore
+  if (data.email) {
+    const emailQuery = query(usersRef, where("email", "==", data.email));
+    const emailSnapshot = await getDocs(emailQuery);
+
+    if (!emailSnapshot.empty) {
+      return { success: false, error: 'Email already registered' };
+    }
+  }
+
+  // Validate password
+  if (!data.password || data.password.length < 6) {
+    return { success: false, error: 'Password must be at least 6 characters' };
   }
 
   // Create new user (in real app, would save to DB)
@@ -126,6 +171,7 @@ export async function register(data: RegisterData): Promise<AuthResponse> {
     phone: data.phone,
     avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
     role: data.role,
+    password: data.password,
     verified: false,
     rating: 0,
     totalConnections: 0,
@@ -142,8 +188,8 @@ export async function register(data: RegisterData): Promise<AuthResponse> {
     skills: []
   };
 
-  // Save to Firestore for persistence
-  await saveUserToFirestore(newUser);
+  // Save to Firestore for persistence (including password)
+  await saveUserToFirestore({ ...newUser, password: data.password });
 
   // Add to local store and set as current
   addUser(newUser);

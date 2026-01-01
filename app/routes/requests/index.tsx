@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, Card, Input, Avatar } from '~/components/ui';
-import { fetchOpenRequests, fetchAllCategories, fetchUserById } from '~/mocks/services';
+import { fetchOpenRequests, fetchAllCategories, fetchUserById, fetchCurrentUser } from '~/mocks/services';
 import type { Request, Category, User } from '~/mocks/store';
 import {
   ArrowLeft,
@@ -25,6 +25,7 @@ export default function BrowseRequestsPage() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [users, setUsers] = useState<Record<string, User>>({});
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -32,6 +33,16 @@ export default function BrowseRequestsPage() {
 
   useEffect(() => {
     async function loadData() {
+      // Check authentication first
+      const userRes = await fetchCurrentUser();
+      if (!userRes.success || !userRes.user) {
+        navigate('/auth/login');
+        return;
+      }
+
+      // Store current user
+      setCurrentUser(userRes.user);
+
       const [reqRes, catRes] = await Promise.all([
         fetchOpenRequests(),
         fetchAllCategories(),
@@ -53,7 +64,7 @@ export default function BrowseRequestsPage() {
       setLoading(false);
     }
     loadData();
-  }, []);
+  }, [navigate]);
 
   const filteredRequests = requests.filter((req) => {
     const matchesSearch =

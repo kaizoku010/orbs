@@ -7,5 +7,7 @@ export * from './userService';
 export * from './requestService'; // Changed from gigService - requests for help
 export * from './categoryService';
 export * from './badgeService';
+export * from './ratingService';
+export * from './activityService';
 export * from './testUserService'; // Test users for development flows
 

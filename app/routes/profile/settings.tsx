@@ -1,6 +1,20 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router";
+import { fetchCurrentUser } from "~/mocks/services";
 
 export default function ProfileSettings() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function checkAuth() {
+      const userRes = await fetchCurrentUser();
+      if (!userRes.success || !userRes.user) {
+        navigate('/auth/login');
+      }
+    }
+    checkAuth();
+  }, [navigate]);
+
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold text-kizuna-green mb-6">Profile Settings</h1>

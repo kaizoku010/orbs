@@ -17,14 +17,32 @@ interface MockStore {
   isAuthenticated: boolean;
 }
 
+// Check if there's a persisted user session
+let initialUserId: string | null = null;
+let initialAuthState = false;
+
+if (typeof window !== 'undefined') {
+  const storedUser = localStorage.getItem('kizuna_current_user');
+  if (storedUser) {
+    try {
+      const user = JSON.parse(storedUser);
+      initialUserId = user.id;
+      initialAuthState = true;
+    } catch (e) {
+      // Invalid stored data, clear it
+      localStorage.removeItem('kizuna_current_user');
+    }
+  }
+}
+
 // Initialize store with cloned data
 const store: MockStore = {
   users: [...users],
   categories: [...categories],
   badges: [...badges],
   requests: [...requests], // Changed from "gigs"
-  currentUserId: currentUser.id,
-  isAuthenticated: true, // Start authenticated for dev
+  currentUserId: initialUserId,
+  isAuthenticated: initialAuthState,
 };
 
 // ============ GETTERS ============
@@ -38,6 +56,31 @@ export function getUserById(id: string): User | undefined {
 }
 
 export function getCurrentUser(): User | null {
+  // First check if we have a user in localStorage (for persistence across refreshes)
+  if (typeof window !== 'undefined') {
+    const storedUser = localStorage.getItem('kizuna_current_user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser) as User;
+        // Update the store with the persisted user
+        if (!store.currentUserId || store.currentUserId !== user.id) {
+          store.currentUserId = user.id;
+          store.isAuthenticated = true;
+          // Make sure the user exists in the store
+          const existingUser = getUserById(user.id);
+          if (!existingUser) {
+            store.users.push(user);
+          }
+        }
+        return user;
+      } catch (e) {
+        // Invalid stored data, clear it
+        localStorage.removeItem('kizuna_current_user');
+      }
+    }
+  }
+
+  // Fallback to in-memory store
   if (!store.currentUserId) return null;
   return getUserById(store.currentUserId) || null;
 }

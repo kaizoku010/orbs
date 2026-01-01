@@ -5,7 +5,7 @@ import { Line } from '@react-three/drei';
 interface ConnectionLineProps {
     start: [number, number, number];
     end: [number, number, number];
-    type: 'active' | 'past';
+    type: 'active' | 'past' | 'completed';
     isMeConnection?: boolean;
 }
 
@@ -17,16 +17,19 @@ export function ConnectionLine({ start, end, type, isMeConnection }: ConnectionL
 
     const color = useMemo(() => {
         if (isMeConnection) return '#06b6d4'; // Bright Cyan for "Me" links
+        if (type === 'completed') return '#3C8F5A'; // Kizuna green for completed bonds
         return type === 'active' ? '#a855f7' : '#444444';
     }, [isMeConnection, type]);
 
     const opacity = useMemo(() => {
         if (isMeConnection) return 1.0;
+        if (type === 'completed') return 0.7;
         return type === 'active' ? 0.6 : 0.1;
     }, [isMeConnection, type]);
 
     const lineWidth = useMemo(() => {
         if (isMeConnection) return 2.5;
+        if (type === 'completed') return 1.5;
         return type === 'active' ? 1.5 : 0.5;
     }, [isMeConnection, type]);
 
@@ -37,10 +40,10 @@ export function ConnectionLine({ start, end, type, isMeConnection }: ConnectionL
             lineWidth={lineWidth}
             transparent
             opacity={opacity}
-            dashed={type === 'active' || isMeConnection}
-            dashScale={2}
-            dashSize={0.5}
-            gapSize={0.2}
+            dashed={type === 'active' || type === 'completed' || isMeConnection}
+            dashScale={type === 'completed' ? 1.5 : 2}
+            dashSize={type === 'completed' ? 0.3 : 0.5}
+            gapSize={type === 'completed' ? 0.3 : 0.2}
         />
     );
 }

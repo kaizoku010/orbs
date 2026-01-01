@@ -62,6 +62,13 @@ export default function HomePage() {
         fetchAllCategories(),
         fetchUserBadges('user-001'), // Current user ID
       ]);
+
+      // Check if user is authenticated
+      if (!userRes.success || !userRes.user) {
+        navigate('/auth/login');
+        return;
+      }
+
       if (userRes.success) setUser(userRes.user!);
       if (reqRes.success) setRequests(reqRes.requests || []);
       if (catRes.success) setCategories(catRes.categories || []);
@@ -69,7 +76,7 @@ export default function HomePage() {
       setLoading(false);
     }
     loadData();
-  }, []);
+  }, [navigate]);
 
   const handleLogout = async () => {
     await logout();

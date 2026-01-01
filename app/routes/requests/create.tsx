@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { Button, Card, Input, Modal, useToastActions } from '~/components/ui';
-import { fetchAllCategories, createRequest } from '~/mocks/services';
+import { fetchAllCategories, createRequest, fetchCurrentUser } from '~/mocks/services';
 import type { Category } from '~/mocks/store';
 import {
   ArrowLeft,
@@ -43,10 +43,19 @@ export default function CreateRequestPage() {
   });
 
   useEffect(() => {
-    fetchAllCategories().then((res) => {
+    async function loadData() {
+      // Check authentication first
+      const userRes = await fetchCurrentUser();
+      if (!userRes.success || !userRes.user) {
+        navigate('/auth/login');
+        return;
+      }
+
+      const res = await fetchAllCategories();
       if (res.success) setCategories(res.categories || []);
-    });
-  }, []);
+    }
+    loadData();
+  }, [navigate]);
 
   const selectedCategory = categories.find((c) => c.id === formData.categoryId);
 

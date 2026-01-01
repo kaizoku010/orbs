@@ -137,11 +137,34 @@ export async function startRequest(requestId: string): Promise<RequestResponse> 
   return { success: false, error: 'Failed to start request' };
 }
 
+// Confirm & Start Request - transition to enroute status with timer
+export async function confirmRequest(requestId: string, estimatedDuration: number = 30): Promise<RequestResponse> {
+  await realisticDelay();
+  
+  const user = getCurrentUser();
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
+  
+  const updated = updateRequest(requestId, { 
+    status: 'enroute',
+    supporterId: user.id,
+    startedAt: new Date().toISOString(),
+    estimatedDuration
+  });
+  
+  if (updated) {
+    return { success: true, request: updated };
+  }
+  return { success: false, error: 'Failed to confirm request' };
+}
+
 // Fulfill a request - mark as complete
 export async function fulfillRequest(requestId: string): Promise<RequestResponse> {
   await realisticDelay();
   const updated = updateRequest(requestId, { 
     status: 'fulfilled',
+    completedAt: new Date().toISOString(),
     fulfilledAt: new Date().toISOString()
   });
   if (updated) {

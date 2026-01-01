@@ -143,3 +143,60 @@ export function getXPForNextLevel(currentXP: number): {
   return { currentLevel, nextLevelXP, progress: Math.min(progress, 100) };
 }
 
+/**
+ * Check if user is on cooldown
+ */
+export async function checkUserCooldown(userId: string): Promise<{
+  onCooldown: boolean;
+  remainingTime: number;  // milliseconds
+  cooldownExpiry?: string;  // ISO timestamp
+}> {
+  await realisticDelay(50);
+  
+  const user = getUserById(userId);
+  if (!user || !user.cooldownExpiry) {
+    return { onCooldown: false, remainingTime: 0 };
+  }
+
+  const now = Date.now();
+  const expiry = new Date(user.cooldownExpiry).getTime();
+  const remaining = Math.max(0, expiry - now);
+
+  return {
+    onCooldown: remaining > 0,
+    remainingTime: remaining,
+    cooldownExpiry: user.cooldownExpiry
+  };
+}
+
+/**
+ * Set cooldown for a user (30 minutes default)
+ */
+export async function setCooldown(userId: string, durationMs: number = 30 * 60 * 1000): Promise<boolean> {
+  await realisticDelay(100);
+  
+  const user = getUserById(userId);
+  if (!user) return false;
+
+  const now = new Date();
+  const expiry = new Date(now.getTime() + durationMs);
+
+  user.lastRequestConfirmedAt = now.toISOString();
+  user.cooldownExpiry = expiry.toISOString();
+
+  return true;
+}
+
+/**
+ * Clear cooldown for a user
+ */
+export async function clearCooldown(userId: string): Promise<boolean> {
+  await realisticDelay(50);
+  
+  const user = getUserById(userId);
+  if (!user) return false;
+
+  user.cooldownExpiry = undefined;
+  return true;
+}
+

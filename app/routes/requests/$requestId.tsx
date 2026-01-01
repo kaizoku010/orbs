@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { MapPin, Calendar, ArrowLeft, Send, CheckCircle, Clock, AlertCircle, MessageSquare, Share2 } from "lucide-react";
 import { fetchRequestById, type RequestResponse } from "~/mocks/services/requestService";
-import { fetchUserById } from "~/mocks/services/userService";
+import { fetchUserById, fetchCurrentUser } from "~/mocks/services/userService";
 import type { Request, User } from "~/mocks/store";
 import Avatar from "~/components/ui/Avatar";
 import Button from "~/components/ui/Button";
@@ -17,6 +17,7 @@ export default function RequestDetail() {
 
     const [request, setRequest] = useState<Request | null>(null);
     const [asker, setAsker] = useState<User | null>(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +27,17 @@ export default function RequestDetail() {
 
             try {
                 setLoading(true);
+
+                // Check authentication first
+                const currentUserRes = await fetchCurrentUser();
+                if (!currentUserRes.success || !currentUserRes.user) {
+                    navigate('/auth/login');
+                    return;
+                }
+
+                // Store current user
+                setCurrentUser(currentUserRes.user);
+
                 const reqResponse = await fetchRequestById(requestId);
 
                 if (reqResponse.success && reqResponse.request) {
@@ -47,11 +59,26 @@ export default function RequestDetail() {
         }
 
         loadData();
-    }, [requestId]);
+    }, [requestId, navigate]);
 
     const handleOfferHelp = () => {
-        toast.success("Offer sent to the asker!");
-        // Logic to actually offer help would go here
+        if (!request || !asker || !currentUser) return;
+        
+        // Store the offer data in sessionStorage to pass to the network route
+        const offerData = {
+            requestId: request.id,
+            requestTitle: request.title,
+            askerId: asker.id,
+            askerName: asker.name,
+            supporterId: currentUser.id,
+            supporterName: currentUser.name,
+            autoMessage: `Hi ${asker.name}, I saw your request for "${request.title}". I am ready to provide and deliver what you need!`
+        };
+        
+        sessionStorage.setItem('pendingOffer', JSON.stringify(offerData));
+        
+        // Navigate to network where the chat modal will open
+        navigate('/network');
     };
 
     const handleCopyLink = () => {
@@ -179,32 +206,47 @@ export default function RequestDetail() {
                 {/* RIGHT COLUMN - Sidebar */}
                 <div className="space-y-6">
 
-                    {/* Action Card */}
-                    <Card className="p-6 sticky top-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">Can you help?</h3>
-                        <p className="text-gray-600 mb-6 text-sm">
-                            Connect with this member to offer your support. Remember, Kizuna is about building bonds.
-                        </p>
+                    {/* Action Card - Only show if not the request author */}
+                    {currentUser && currentUser.id !== request.askerId ? (
+                        <Card className="p-6 sticky top-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4">Can you help?</h3>
+                            <p className="text-gray-600 mb-6 text-sm">
+                                Connect with this member to offer your support. Remember, Kizuna is about building bonds.
+                            </p>
 
-                        <div className="space-y-3">
-                            <Button className="w-full justify-center text-lg py-6" onClick={handleOfferHelp}>
-                                Offer Support
-                            </Button>
-                            <Button variant="outline" className="w-full justify-center">
-                                <MessageSquare className="w-4 h-4 mr-2" />
-                                Message
-                            </Button>
-                        </div>
+                            <div className="space-y-3">
+                                <Button className="w-full justify-center text-lg py-6" onClick={handleOfferHelp}>
+                                    Offer Support
+                                </Button>
+                                <Button variant="outline" className="w-full justify-center">
+                                    <MessageSquare className="w-4 h-4 mr-2" />
+                                    Message
+                                </Button>
+                            </div>
 
-                        <div className="mt-6 pt-6 border-t border-gray-100">
-                            <div className="flex items-start gap-3">
-                                <AlertCircle className="w-5 h-5 text-gray-400 mt-0.5" />
-                                <p className="text-xs text-gray-500">
-                                    Payments are held in escrow until the request is fulfilled. Your safety is our priority.
+                            <div className="mt-6 pt-6 border-t border-gray-100">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-gray-400 mt-0.5" />
+                                    <p className="text-xs text-gray-500">
+                                        Payments are held in escrow until the request is fulfilled. Your safety is our priority.
+                                    </p>
+                                </div>
+                            </div>
+                        </Card>
+                    ) : (
+                        <Card className="p-6 sticky top-6 bg-slate-50 border-slate-200">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4">Your Request</h3>
+                            <p className="text-gray-600 mb-4 text-sm">
+                                This is your request. You'll be notified when someone offers to help.
+                            </p>
+                            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                <Clock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-blue-900">
+                                    Waiting for responses from the community. We'll notify you when someone offers support.
                                 </p>
                             </div>
-                        </div>
-                    </Card>
+                        </Card>
+                    )}
 
                     {/* Asker Profile Card */}
                     {asker && (

@@ -9,6 +9,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  password: string;
   avatar: string;
   role: 'individual' | 'company' | 'admin';
   verified: boolean;
@@ -25,6 +26,19 @@ export interface User {
   bio: string;
   joinedAt: string;
   skills: string[]; // Changed from "categories" - what they can offer
+  // Cooldown fields
+  lastRequestConfirmedAt?: string;    // ISO timestamp when last confirmed
+  cooldownExpiry?: string;            // ISO timestamp when cooldown ends
+  // Rating fields
+  averageRating?: number;             // Average of all ratings
+  totalRatingsReceived?: number;      // Count of ratings received
+  ratingsBreakdown?: {                // Breakdown by star count
+    5: number;
+    4: number;
+    3: number;
+    2: number;
+    1: number;
+  };
 }
 
 export const users: User[] = [

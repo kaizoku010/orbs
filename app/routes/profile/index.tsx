@@ -35,12 +35,19 @@ export default function ProfilePage() {
         fetchCurrentUser(),
         fetchUserBadges('user-001'),
       ]);
+
+      // Check if user is authenticated
+      if (!userRes.success || !userRes.user) {
+        navigate('/auth/login');
+        return;
+      }
+
       if (userRes.success) setUser(userRes.user!);
       if (badgeRes.success) setBadges(badgeRes.badges || []);
       setLoading(false);
     }
     loadData();
-  }, []);
+  }, [navigate]);
 
   if (loading || !user) {
     return (

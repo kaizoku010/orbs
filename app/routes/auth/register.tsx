@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Phone, Mail, ArrowRight, ArrowLeft, Camera,
-  MapPin, Sparkles, Check, Shield, Info, Loader2, Plus, Image as ImageIcon
+  MapPin, Sparkles, Check, Shield, Info, Loader2, Plus, Image as ImageIcon, Lock
 } from 'lucide-react';
 import { register } from '~/mocks/services/authService';
 import { uploadToCloudinary } from '~/lib/cloudinary';
@@ -28,6 +28,7 @@ export default function RegisterPage() {
     name: '',
     email: '',
     phone: '',
+    password: '',
     bio: '',
     avatar: AVATARS[0],
     lat: 0.3476,
@@ -42,6 +43,8 @@ export default function RegisterPage() {
     if (step === 1) {
       if (!formData.name) newErrors.name = 'Name is required';
       if (!formData.phone) newErrors.phone = 'Phone is required';
+      if (!formData.password) newErrors.password = 'Password is required';
+      if (formData.password && formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -203,6 +206,21 @@ export default function RegisterPage() {
                       className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[14px] text-charcoal font-bold focus:outline-none focus:ring-2 focus:ring-kizuna-green/20 focus:border-kizuna-green transition-all placeholder:text-slate-300"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"><Lock size={18} /></div>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={e => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="At least 6 characters"
+                      className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[14px] text-charcoal font-bold focus:outline-none focus:ring-2 focus:ring-kizuna-green/20 focus:border-kizuna-green transition-all placeholder:text-slate-300"
+                    />
+                  </div>
+                  {errors.password && <p className="text-[10px] font-black text-red-500 uppercase ml-1 italic">{errors.password}</p>}
                 </div>
               </motion.div>
             )}
