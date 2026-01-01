@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { NetworkScene } from "../components/network/NetworkScene";
-import { fetchAllUsers, fetchAllRequests, fetchCurrentUser } from "../mocks/services";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Shield, Award, X, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
+import {
+    subscribeToUsers,
+    subscribeToRequests,
+    saveRequestToFirestore,
+    saveUserToFirestore
+} from "~/services/firebaseService";
+import { fetchCurrentUser } from "../mocks/services";
 
 export default function NetworkPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -14,43 +20,72 @@ export default function NetworkPage() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        async function loadData() {
-            try {
-                const [uRes, rRes, meRes] = await Promise.all([
-                    fetchAllUsers(),
-                    fetchAllRequests(),
-                    fetchCurrentUser()
-                ]);
-                if (uRes.success && uRes.users) setUsers(uRes.users);
-                if (rRes.success && rRes.requests) setRequests(rRes.requests);
-                if (meRes.success) setCurrentUser(meRes.user);
-            } catch (error) {
-                console.error("Failed to load network data:", error);
-            } finally {
-                setLoading(false);
-            }
+        // Fetch current user once
+        async function loadMe() {
+            const meRes = await fetchCurrentUser();
+            if (meRes.success) setCurrentUser(meRes.user);
+            setLoading(false);
         }
-        loadData();
+        loadMe();
+
+        // Subscribe to live data
+        const unsubscribeUsers = subscribeToUsers((data) => {
+            setUsers(data);
+        });
+
+        const unsubscribeRequests = subscribeToRequests((data) => {
+            setRequests(data);
+        });
+
+        return () => {
+            unsubscribeUsers();
+            unsubscribeRequests();
+        };
     }, []);
 
     const handleUserClick = (user: any) => {
         setSelectedUser(user);
     };
 
+    const handleRespondToRequest = async (req: any) => {
+        if (!currentUser) return;
+
+        const updatedReq = { ...req, status: 'connected', supporterId: currentUser.id };
+        await saveRequestToFirestore(updatedReq);
+    };
+
+    const handleCancelRequest = async (reqId: string) => {
+        // In a real app we'd update status to 'cancelled' or delete
+        // For now, let's just keep it simple
+    };
+
+    const handleCreateRequest = async (data: any) => {
+        if (!currentUser) return;
+        const newReq = {
+            id: `req-${Date.now()}`,
+            askerId: currentUser.id,
+            status: 'open',
+            createdAt: new Date().toISOString(),
+            ...data,
+            budget: Number(data.budget)
+        };
+        await saveRequestToFirestore(newReq);
+    };
+
     return (
-        <div className="w-full h-screen bg-[#050510] overflow-hidden relative">
+        <div className="w-full h-screen bg-[#050510] overflow-hidden relative font-sans">
             {/* Header / Nav */}
-            <div className="absolute top-0 left-0 w-full z-20 px-8 py-8 flex justify-between items-start pointer-events-none">
+            <div className="absolute top-0 left-0 w-full z-20 px-4 py-4 sm:px-8 sm:py-8 flex justify-between items-start pointer-events-none">
                 <button
                     onClick={() => navigate("/home")}
-                    className="pointer-events-auto flex items-center gap-3 text-white/50 hover:text-white transition-colors bg-[#1a1a2e] px-4 py-2 rounded-[10px] border border-white/5 shadow-md"
+                    className="pointer-events-auto flex items-center gap-2 sm:gap-3 text-white/50 hover:text-white transition-colors bg-[#1a1a2e] px-3 py-2 sm:px-4 rounded-[10px] border border-white/5 shadow-md group"
                 >
-                    <ArrowLeft size={18} />
-                    <span className="font-bold text-xs tracking-tight uppercase">Back to Home</span>
+                    <ArrowLeft size={16} className="sm:w-[18px]" />
+                    <span className="font-bold text-[10px] sm:text-xs tracking-tight uppercase">Home</span>
                 </button>
-                <div className="text-right pointer-events-auto bg-[#1a1a2e] p-3 rounded-[10px] border border-white/5 shadow-sm">
-                    <h1 className="text-sm font-black text-white tracking-widest leading-none mb-1 uppercase">Live Network</h1>
-                    <p className="text-[8px] font-bold text-white/20 uppercase tracking-[0.2em]">Kampala Central Node</p>
+                <div className="text-right pointer-events-auto bg-[#1a1a2e] p-2 sm:p-3 rounded-[10px] border border-white/5 shadow-sm">
+                    <h1 className="text-[10px] sm:text-sm font-black text-white tracking-widest leading-none mb-1 uppercase">Live Network</h1>
+                    <p className="text-[7px] sm:text-[8px] font-bold text-white/20 uppercase tracking-[0.2em]">Kampala Central</p>
                 </div>
             </div>
 
@@ -70,6 +105,9 @@ export default function NetworkPage() {
                         selectedUserId={selectedUser?.id}
                         currentUserId={currentUser?.id}
                         onUserClose={() => setSelectedUser(null)}
+                        onRespondToRequest={handleRespondToRequest}
+                        onCancelRequest={handleCancelRequest}
+                        onPostRequest={handleCreateRequest}
                     />
 
 

@@ -108,6 +108,10 @@ export function updateRequest(id: string, updates: Partial<Request>): Request | 
   return store.requests[index];
 }
 
+export function addUser(user: User): void {
+  store.users.push(user);
+}
+
 export function updateUser(id: string, updates: Partial<User>): User | undefined {
   const index = store.users.findIndex(u => u.id === id);
   if (index === -1) return undefined;
@@ -120,7 +124,7 @@ export function awardBadge(userId: string, badgeId: string): boolean {
   const badge = getBadgeById(badgeId);
   if (!user || !badge) return false;
   if (user.badges.includes(badgeId)) return false; // Already has badge
-  
+
   const index = store.users.findIndex(u => u.id === userId);
   store.users[index].badges.push(badgeId);
   store.users[index].xp += badge.xpReward;
