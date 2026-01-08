@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate } from "react-router-dom";
 import { MapPin, Calendar, ArrowLeft, Send, CheckCircle, Clock, AlertCircle, MessageSquare, Share2 } from "lucide-react";
 import { fetchRequestById, type RequestResponse } from "~/mocks/services/requestService";
 import { fetchUserById, fetchCurrentUser } from "~/mocks/services/userService";

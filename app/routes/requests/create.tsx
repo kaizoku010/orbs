@@ -1,6 +1,6 @@
 // Create Request - Ask for Help flow
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Card, Input, Modal, useToastActions } from '~/components/ui';
 import { fetchAllCategories, createRequest, fetchCurrentUser } from '~/mocks/services';

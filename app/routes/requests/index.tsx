@@ -1,6 +1,6 @@
 // Browse Requests - Offer Support
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, Card, Input, Avatar } from '~/components/ui';
 import { fetchOpenRequests, fetchAllCategories, fetchUserById, fetchCurrentUser } from '~/mocks/services';

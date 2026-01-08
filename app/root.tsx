@@ -8,6 +8,7 @@ import {
   useLocation,
 } from "react-router";
 import { useState, useEffect } from "react";
+import { AuthProvider } from "./auth/AuthProvider";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -47,12 +48,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+function Providers({ children }) {
   return (
     <ToastProvider>
-      {/* <Header /> */}
-      <Outlet />
+      <AuthProvider>{children}</AuthProvider>
     </ToastProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <Providers>
+      <Outlet />
+    </Providers>
   );
 }
 
@@ -82,63 +90,5 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         </pre>
       )}
     </main>
-  );
-}
-
-function Header() {
-  const { isLoggedIn, logout } = useAuth();
-  const location = useLocation();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Hide header on profile and profile-related routes when logged in
-  if (isLoggedIn && location.pathname.startsWith("/profile")) {
-    return null;
-  }
-
-  // Don't render until client-side hydration is complete
-  if (!isClient) {
-    return (
-      <header className="bg-white shadow-md">
-        <div className="container mx-auto px-4 py-2 flex justify-between items-center">
-          <Link to="/" className="text-xl font-bold text-kizuna-green">
-            絆 Kizuna
-          </Link>
-        </div>
-      </header>
-    );
-  }
-
-  const handleLogout = (e: React.MouseEvent) => {
-    e.preventDefault();
-    logout();
-  };
-
-  return (
-    <header className="bg-white shadow-md">
-      <div className="container mx-auto px-4 py-2 flex justify-between items-center">
-        <Link to="/" className="text-xl font-bold text-kizuna-green">
-          絆 Kizuna
-        </Link>
-        {isLoggedIn ? (
-          <nav className="flex items-center gap-4">
-            <Link to="/profile" className="text-gray-700 hover:text-kizuna-green">Profile</Link>
-            <button onClick={handleLogout} className="text-gray-700 hover:text-kizuna-green">Logout</button>
-          </nav>
-        ) : (
-          <nav className="flex items-center gap-3">
-            <Link to="/auth/login">
-              <Button variant="ghost" size="sm">Sign In</Button>
-            </Link>
-            <Link to="/auth/register">
-              <Button size="sm">Create Account</Button>
-            </Link>
-          </nav>
-        )}
-      </div>
-    </header>
   );
 }

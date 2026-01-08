@@ -1,65 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { NetworkScene } from "../components/network/NetworkScene";
-import { ActivityPane } from "../components/network/ActivityPane";
+import ActivityPane from "../components/network/ActivityPane";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Shield, Award, X, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import {
     subscribeToUsers,
     subscribeToRequests,
     saveRequestToFirestore,
     saveUserToFirestore
 } from "~/services/firebaseService";
-import { fetchCurrentUser } from "../mocks/services";
+import { useAuth } from '~/hooks/useAuth';
 
 export default function NetworkPage() {
+    const { user } = useAuth();
     const [users, setUsers] = useState<any[]>([]);
     const [requests, setRequests] = useState<any[]>([]);
-    const [currentUser, setCurrentUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Fetch current user once
-        async function loadMe() {
-            const meRes = await fetchCurrentUser();
+        console.log('[NetworkPage] Mounted. User:', user ? (user as any).uid : 'null', 'Loading:', loading);
 
-            // Check if user is authenticated
-            if (!meRes.success || !meRes.user) {
-                // No user logged in, redirect to login
-                navigate('/auth/login');
-                return;
-            }
+        if (user) {
+            console.log('[NetworkPage] Subscribing to live data...');
+            // Subscribe to live data
+            const unsubscribeUsers = subscribeToUsers((data) => {
+                setUsers(data);
+            });
 
-            setCurrentUser(meRes.user);
+            const unsubscribeRequests = subscribeToRequests((data) => {
+                setRequests(data);
+            });
+
             setLoading(false);
+
+            return () => {
+                unsubscribeUsers();
+                unsubscribeRequests();
+            };
         }
-        loadMe();
-
-        // Subscribe to live data
-        const unsubscribeUsers = subscribeToUsers((data) => {
-            setUsers(data);
-        });
-
-        const unsubscribeRequests = subscribeToRequests((data) => {
-            setRequests(data);
-        });
-
-        return () => {
-            unsubscribeUsers();
-            unsubscribeRequests();
-        };
-    }, [navigate]);
+    }, [user]);
 
     const handleUserClick = (user: any) => {
         setSelectedUser(user);
     };
 
     const handleRespondToRequest = async (req: any) => {
-        if (!currentUser) return;
+        if (!user) return;
 
-        const updatedReq = { ...req, status: 'connected', supporterId: currentUser.id };
+        const updatedReq = { ...req, status: 'connected', supporterId: (user as any).uid };
         await saveRequestToFirestore(updatedReq);
     };
 
@@ -69,10 +60,10 @@ export default function NetworkPage() {
     };
 
     const handleCreateRequest = async (data: any) => {
-        if (!currentUser) return;
+        if (!user) return;
         const newReq = {
             id: `req-${Date.now()}`,
-            askerId: currentUser.id,
+            askerId: (user as any).uid,
             status: 'open',
             createdAt: new Date().toISOString(),
             ...data,
@@ -107,10 +98,7 @@ export default function NetworkPage() {
                 </div>
             ) : (
                 <div className="w-full h-full flex gap-4 p-4">
-                    {/* Left Activity Pane */}
-                    <div className="w-80 hidden lg:block">
-                        <ActivityPane />
-                    </div>
+
 
                     {/* Main Network Scene */}
                     <div className="flex-1">
@@ -119,7 +107,7 @@ export default function NetworkPage() {
                             requests={requests}
                             onUserClick={handleUserClick}
                             selectedUserId={selectedUser?.id}
-                            currentUserId={currentUser?.id}
+                            currentUserId={(user as any)?.uid}
                             onUserClose={() => setSelectedUser(null)}
                             onRespondToRequest={handleRespondToRequest}
                             onCancelRequest={handleCancelRequest}

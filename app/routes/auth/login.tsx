@@ -1,35 +1,28 @@
 // Login Screen - Phone/Email authentication
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useAuth } from '~/hooks/useAuth';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Mail, ArrowRight, User, Briefcase, Lock, Loader2 } from 'lucide-react';
-import { login, loginAsTestUser, TEST_USER_ALICE, TEST_USER_BOB } from '~/mocks/services';
+import { Mail, ArrowRight, Lock, Loader2 } from 'lucide-react';
+import { signInWithEmailAndPassword } from '~/services/firebaseService';
 
 export default function LoginPage() {
+
+
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/network', { replace: true });
+    }
+  }, [user, navigate]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [quickLoading, setQuickLoading] = useState<'alice' | 'bob' | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Load saved credentials on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedEmail = localStorage.getItem('kizuna_saved_email');
-      const savedPassword = localStorage.getItem('kizuna_saved_password');
-      const savedRemember = localStorage.getItem('kizuna_remember_me');
-
-      if (savedRemember === 'true' && savedEmail) {
-        setEmail(savedEmail);
-        setRememberMe(true);
-        if (savedPassword) {
-          setPassword(savedPassword);
-        }
-      }
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +30,7 @@ export default function LoginPage() {
 
     // Validation
     const newErrors: Record<string, string> = {};
-    if (!email) newErrors.phone = 'Phone is required';
+    if (!email) newErrors.email = 'Email is required';
     if (!password) newErrors.password = 'Password is required';
 
     if (Object.keys(newErrors).length > 0) {
@@ -47,50 +40,18 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const result = await login({ email, password });
-
-    if (result.success) {
-      // Save credentials if "Remember Me" is checked
-      if (typeof window !== 'undefined') {
-        if (rememberMe) {
-          localStorage.setItem('kizuna_saved_email', email);
-          localStorage.setItem('kizuna_saved_password', password);
-          localStorage.setItem('kizuna_remember_me', 'true');
-        } else {
-          // Clear saved credentials if "Remember Me" is unchecked
-          localStorage.removeItem('kizuna_saved_phone');
-          localStorage.removeItem('kizuna_saved_password');
-          localStorage.removeItem('kizuna_remember_me');
-        }
-      }
-
-      navigate('/network');
-    } else {
-      setErrors({ submit: result.error || 'Invalid phone or password' });
+    try {
+      await signInWithEmailAndPassword(email, password);
+      // AuthProvider will handle the redirect via the useEffect above
+    } catch (error: any) {
+      console.error('[LoginPage] login error:', error);
+      setErrors({ submit: error?.message || 'Invalid email or password' });
+      setLoading(false);
     }
-
-    setLoading(false);
-  };
-
-  // Quick login for test users
-  const handleQuickLogin = async (type: 'alice' | 'bob') => {
-    setQuickLoading(type);
-    setErrors({});
-
-    const result = await loginAsTestUser(type);
-
-    if (result.success) {
-      navigate('/network');
-    } else {
-      setErrors({ submit: result.error || 'Something went wrong' });
-    }
-
-    setQuickLoading(null);
   };
 
   return (
     <div className="min-h-screen bg-[#050510] flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden relative">
-      {/* Background Decorative Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-kizuna-green/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
 
@@ -99,7 +60,6 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-[480px] bg-white rounded-[24px] shadow-2xl overflow-hidden shadow-kizuna-green/5 border border-slate-100"
       >
-        {/* Header */}
         <div className="p-8 pb-6">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-8 h-8 rounded-full bg-kizuna-green flex items-center justify-center text-white font-black text-lg">絆</div>
@@ -116,21 +76,20 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Login Form */}
         <form onSubmit={handleSubmit} className="p-8 pt-4 space-y-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"><Phone size={18} /></div>
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"><Mail size={18} /></div>
               <input
-                type="tel"
+                type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="user@email.com"
                 className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[14px] text-charcoal font-bold focus:outline-none focus:ring-2 focus:ring-kizuna-green/20 focus:border-kizuna-green transition-all placeholder:text-slate-300"
               />
             </div>
-            {errors.phone && <p className="text-[10px] font-black text-red-500 uppercase ml-1 italic">{errors.phone}</p>}
+            {errors.email && <p className="text-[10px] font-black text-red-500 uppercase ml-1 italic">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
@@ -148,7 +107,6 @@ export default function LoginPage() {
             {errors.password && <p className="text-[10px] font-black text-red-500 uppercase ml-1 italic">{errors.password}</p>}
           </div>
 
-          {/* Remember Me Checkbox */}
           <div className="flex items-center gap-2 ml-1">
             <input
               type="checkbox"
@@ -178,69 +136,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Quick Login - Test Users */}
-        <div className="px-8 pb-4">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-100"></div>
-            </div>
-            <div className="relative flex justify-center text-[9px]">
-              <span className="px-4 bg-white text-slate-400 font-black uppercase tracking-widest">Quick Login (Dev)</span>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {/* Alice - Asker */}
-            <button
-              onClick={() => handleQuickLogin('alice')}
-              disabled={quickLoading !== null}
-              className="flex flex-col items-center gap-2 p-4 rounded-[14px] border-2 border-slate-100 transition-all hover:border-kizuna-green hover:bg-slate-50 disabled:opacity-50 bg-white"
-            >
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-kizuna-green">
-                <img
-                  src={TEST_USER_ALICE.avatar}
-                  alt={TEST_USER_ALICE.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="text-center">
-                <p className="font-black text-charcoal text-xs uppercase">{TEST_USER_ALICE.name.split(' ')[0]}</p>
-                <p className="text-[9px] text-slate-400 flex items-center justify-center gap-1 font-black uppercase tracking-wider">
-                  <User size={10} /> Asker
-                </p>
-              </div>
-              {quickLoading === 'alice' && (
-                <Loader2 size={14} className="animate-spin text-kizuna-green" />
-              )}
-            </button>
-
-            {/* Bob - Supporter */}
-            <button
-              onClick={() => handleQuickLogin('bob')}
-              disabled={quickLoading !== null}
-              className="flex flex-col items-center gap-2 p-4 rounded-[14px] border-2 border-slate-100 transition-all hover:border-kizuna-green hover:bg-slate-50 disabled:opacity-50 bg-white"
-            >
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-500">
-                <img
-                  src={TEST_USER_BOB.avatar}
-                  alt={TEST_USER_BOB.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="text-center">
-                <p className="font-black text-charcoal text-xs uppercase">{TEST_USER_BOB.name.split(' ')[0]}</p>
-                <p className="text-[9px] text-slate-400 flex items-center justify-center gap-1 font-black uppercase tracking-wider">
-                  <Briefcase size={10} /> Supporter
-                </p>
-              </div>
-              {quickLoading === 'bob' && (
-                <Loader2 size={14} className="animate-spin text-kizuna-green" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Footer */}
         <div className="p-8 pt-4 text-center space-y-4">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             Don't have an account?{' '}

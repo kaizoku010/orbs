@@ -64,8 +64,12 @@ html {
 }
 
 body {
-  @apply bg-washi-beige text-charcoal antialiased;
+  @apply antialiased;
+     background-color: rgb(0, 0, 0);
+
+
 }
+
 
 /* Minimalist Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {

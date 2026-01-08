@@ -9,7 +9,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
-  password: string;
+  password?: string;  // Optional - only needed for mock auth
   avatar: string;
   role: 'individual' | 'company' | 'admin';
   verified: boolean;

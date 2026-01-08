@@ -1,6 +1,6 @@
 // Home Dashboard - Waabi-inspired bento grid with media
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Avatar } from '~/components/ui';
 import {

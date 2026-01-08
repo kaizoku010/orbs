@@ -1,0 +1,12 @@
+.register-page{
+    padding: 0% !important;
+}
+
+.register-img{
+    height: 100%;
+    width: 20rem;
+}
+
+.register-img > img{
+    border-radius: 10px;
+}

@@ -1,6 +1,6 @@
 // Profile View - Public profile display
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Card, Avatar } from '~/components/ui';
 import { Badge, BadgeList } from '~/components/badges';
@@ -46,7 +46,7 @@ export default function ProfilePage() {
       if (badgeRes.success) setBadges(badgeRes.badges || []);
       setLoading(false);
     }
-    loadData();
+    // loadData();
   }, [navigate]);
 
   if (loading || !user) {

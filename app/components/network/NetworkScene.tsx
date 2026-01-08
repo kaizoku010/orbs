@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UserOrb } from './UserOrb';
 import { ConnectionLine } from './ConnectionLine';
 import RatingModal from '../ui/RatingModal';
-import { logActivity } from '~/mocks/services/activityService';
+// import { logActivity } from '~/mocks/services/activityService';
 import { NETWORK_CATEGORIES } from '~/constants/categories';
 
 interface NetworkSceneProps {
@@ -169,11 +169,11 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
                     id: req.id,
                     start: startNode.position,
                     end: endNode.position,
-                    type: req.status === 'fulfilled' 
+                    type: req.status === 'fulfilled'
                         ? 'completed'
-                        : (req.status === 'accepted' || req.status === 'in-progress' || req.status === 'enroute' || req.status === 'connected') 
-                        ? 'active' 
-                        : 'past',
+                        : (req.status === 'accepted' || req.status === 'in-progress' || req.status === 'enroute' || req.status === 'connected')
+                            ? 'active'
+                            : 'past',
                     isMeConnection
                 });
             }
@@ -280,7 +280,7 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
 
         try {
             const offerData = JSON.parse(pendingOfferData);
-            
+
             // Find matching request
             const request = requests.find(r => r.id === offerData.requestId);
             if (!request) return;
@@ -373,14 +373,17 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
         setRatingModalOpen(true);
 
         // Log activity event
+        // logActivity({ ... }) - Mock service disabled
+        /*
         logActivity({
             userId: currentUserId || '',
             type: 'completion' as const,
-            targetUserId: request.askerId || '',
+            targetUserId: request.id,
             title: `completed delivery`,
             description: `${users.find(u => u.id === currentUserId)?.name || 'Someone'} completed "${request.title}"`,
             timestamp: new Date().toISOString()
         }).catch(err => console.log('Activity logged:', err));
+        */
 
         console.log(`Request ${request.id} completed - rating modal opened`);
     };
@@ -389,7 +392,7 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
         if (!currentUserId || !pendingRequestForRating) return;
 
         const request = pendingRequestForRating;
-        
+
         // Update request with rating
         const requestIndex = requests.findIndex(r => r.id === request.id);
         if (requestIndex !== -1) {
@@ -409,7 +412,7 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
             const currentRatings = supporter.ratingsBreakdown || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
             currentRatings[rating as keyof typeof currentRatings] = (currentRatings[rating as keyof typeof currentRatings] || 0) + 1;
             supporter.ratingsBreakdown = currentRatings;
-            
+
             // Calculate new average
             const totalRatings = Object.values(currentRatings).reduce((a: number, b: number) => a + b, 0);
             const totalScore = Object.entries(currentRatings).reduce((sum, [stars, count]) => sum + (parseInt(stars) * (count as number)), 0);
@@ -418,6 +421,9 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
         }
 
         // Log activity events
+        // Log activity events
+        // logActivity({ ... }) - Mock service disabled
+        /*
         logActivity({
             userId: currentUserId || '',
             type: 'rating_received' as const,
@@ -427,14 +433,15 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
             rating: rating,
             timestamp: new Date().toISOString()
         }).catch(err => console.log('Activity logged:', err));
+        */
 
         console.log(`Rating submitted: ${rating} stars`);
-        
+
         // Could check for badge unlocks here
         // For now, just close the modal
         setRatingModalOpen(false);
         setPendingRequestForRating(null);
-        
+
         return Promise.resolve();
     };
 
@@ -480,10 +487,10 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
                                 onClose={handleResetZoom}
                                 currentUserId={currentUserId}
                                 history={{
-                                    deliveries: Math.floor(Math.random() * 10) + (node.user.totalConnections || 5),
-                                    trust: (Math.random() * 5 + 95).toFixed(1) + "%",
-                                    lastRating: 5,
-                                    lastReview: node.isMe ? "This is you!" : "Highly reliable supporter."
+                                    deliveries: node.user.totalConnections || 0,
+                                    trust: node.user.verified ? "100%" : "New",
+                                    lastRating: node.user.averageRating || 5,
+                                    lastReview: node.isMe ? "This is you!" : "No reviews yet"
                                 }}
                                 chatTargetUser={chatTargetUser}
                             />
@@ -1049,7 +1056,7 @@ export function NetworkScene({ users, requests, onUserClick, selectedUserId, cur
                     </motion.div>
                 )}
             </AnimatePresence>
-            
+
             {/* Rating Modal */}
             <AnimatePresence>
                 {ratingModalOpen && pendingRequestForRating && (

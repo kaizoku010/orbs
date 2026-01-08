@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  User, Phone, Mail, ArrowRight, ArrowLeft, Camera,
+  User, Mail, ArrowRight, ArrowLeft, Camera,
   MapPin, Sparkles, Check, Shield, Info, Loader2, Plus, Image as ImageIcon, Lock
 } from 'lucide-react';
-import { register } from '~/mocks/services/authService';
+import { useAuth } from '~/hooks/useAuth';
 import { uploadToCloudinary } from '~/lib/cloudinary';
+import "./regesiter.css"
+import Kim from "../../../media/kim.jpg"
+import Jer from "../../../media/her.jpg"
+
 
 const AVATARS = [
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
@@ -19,6 +23,7 @@ const AVATARS = [
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { signup } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -27,7 +32,6 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
     password: '',
     bio: '',
     avatar: AVATARS[0],
@@ -42,7 +46,7 @@ export default function RegisterPage() {
     const newErrors: Record<string, string> = {};
     if (step === 1) {
       if (!formData.name) newErrors.name = 'Name is required';
-      if (!formData.phone) newErrors.phone = 'Phone is required';
+      if (!formData.email) newErrors.email = 'Email is required';
       if (!formData.password) newErrors.password = 'Password is required';
       if (formData.password && formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     }
@@ -95,34 +99,42 @@ export default function RegisterPage() {
 
   const handleSubmit = async () => {
     setLoading(true);
-    const res = await register(formData);
-    if (res.success) {
+    try {
+      await signup(formData.email, formData.password);
       // In a real app we'd redirect to verify or dashboard
       // For now, let's go straight to the network
       navigate('/network');
-    } else {
-      setErrors({ submit: res.error || 'Registration failed' });
+    } catch (error) {
+      setErrors({ submit: error.message || 'Registration failed' });
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#050510] flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden relative">
+    <div className="register-page min-h-screen bg-[#050510] flex items-center justify-center sm:p-6 font-sans overflow-hidden relative">
       {/* Background Decorative Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-kizuna-green/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
 
+<div className='register-img'>
+  <img src={Kim}/>
+
+</div>
+<div className='register-img ml-2 mr-8' >
+  <img src={Jer}/>
+
+</div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-[480px] bg-white rounded-[24px] shadow-2xl overflow-hidden shadow-kizuna-green/5 border border-slate-100 flex flex-col min-h-[600px]"
+        className="w-full max-w-[480px] bg-white rounded-[10px] shadow-2xl overflow-hidden shadow-kizuna-green/5 border border-slate-100 flex flex-col min-h-[600px]"
       >
         {/* Header / Progress */}
         <div className="p-8 pb-4">
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-kizuna-green flex items-center justify-center text-white font-black text-lg">絆</div>
-              <span className="font-black text-charcoal tracking-widest text-sm uppercase">Kizuna</span>
+              <span className="font-black text-charcoal tracking-widest text-sm uppercase">ORBS</span>
             </div>
             <div className="flex gap-1">
               {[1, 2, 3].map(s => (
@@ -140,12 +152,12 @@ export default function RegisterPage() {
               className="space-y-1"
             >
               <h1 className="text-2xl font-black text-charcoal uppercase tracking-tight">
-                {step === 1 && "Create your identity"}
+                {step === 1 && "Let's create your identity"}
                 {step === 2 && "Personalize your profile"}
                 {step === 3 && "Secure your location"}
               </h1>
               <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">
-                {step === 1 && "Start your journey in the network"}
+                {step === 1 && "Start your journey on our network"}
                 {step === 2 && "Let the community know who you are"}
                 {step === 3 && "So neighbors can find and help you"}
               </p>
@@ -180,22 +192,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"><Phone size={18} /></div>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="+256 700 000 000"
-                      className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[14px] text-charcoal font-bold focus:outline-none focus:ring-2 focus:ring-kizuna-green/20 focus:border-kizuna-green transition-all placeholder:text-slate-300"
-                    />
-                  </div>
-                  {errors.phone && <p className="text-[10px] font-black text-red-500 uppercase ml-1 italic">{errors.phone}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email (Optional)</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
                   <div className="relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"><Mail size={18} /></div>
                     <input
@@ -206,6 +203,7 @@ export default function RegisterPage() {
                       className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-[14px] text-charcoal font-bold focus:outline-none focus:ring-2 focus:ring-kizuna-green/20 focus:border-kizuna-green transition-all placeholder:text-slate-300"
                     />
                   </div>
+                  {errors.email && <p className="text-[10px] font-black text-red-500 uppercase ml-1 italic">{errors.email}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -335,7 +333,7 @@ export default function RegisterPage() {
             {step > 1 && (
               <button
                 onClick={handleBack}
-                className="px-6 py-4 bg-slate-50 text-slate-400 rounded-[14px] hover:bg-slate-100 transition-all font-black text-xs uppercase tracking-widest"
+                className="px-6 py-4 bg-slate-50 text-slate-400 rounded-[7px] hover:bg-slate-100 transition-all font-black text-xs uppercase tracking-widest"
               >
                 <ArrowLeft size={18} />
               </button>
@@ -346,7 +344,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={handleNext}
                 disabled={uploading}
-                className={`flex-1 py-4 text-white rounded-[14px] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg ${uploading ? 'bg-slate-300 cursor-not-allowed' : 'bg-kizuna-green hover:brightness-110 shadow-kizuna-green/10'}`}
+                className={`flex-1 py-4 text-white rounded-[7px] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg ${uploading ? 'bg-slate-300 cursor-not-allowed' : 'bg-kizuna-green hover:brightness-110 shadow-kizuna-green/10'}`}
               >
                 {uploading ? (
                   <>Processing... <Loader2 size={18} className="animate-spin" /></>
@@ -359,7 +357,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || uploading}
-                className={`flex-1 py-4 text-white rounded-[14px] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-xl ${loading || uploading ? 'bg-slate-300' : 'bg-kizuna-green hover:brightness-110 shadow-kizuna-green/20'}`}
+                className={`flex-1 py-4 text-white rounded-[10px] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-xl ${loading || uploading ? 'bg-slate-300' : 'bg-kizuna-green hover:brightness-110 shadow-kizuna-green/20'}`}
               >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                 {loading ? "Establishing Connection..." : "Join the Grid"}
